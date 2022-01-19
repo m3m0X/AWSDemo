@@ -1,19 +1,42 @@
+# version: 0.2
+
+# phases:
+#   install:
+#     runtime-versions:
+#       java: corretto11
+#   pre_build:
+#     commands:
+#       - echo Esta es la etapa pre_build...
+#   build:
+#     commands:
+#       - echo Comienza el Build, started on `date`
+#       - mvn install
+#   post_build:
+#     commands:
+#       - echo Post_build finalizado!
+# artifacts:
+#   files:
+#     - target/messageUtil-1.0.jar
+
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      java: corretto11
   pre_build:
     commands:
-      - echo Esta es la etapa pre_build...
+      - echo Conectandose a Amazon ECR...
+      - echo $AWS_DEFAULT_REGION
+      - echo $AWS_ACCOUNT_ID
+      - echo $IMAGE_REPO_NAME
+      - echo $IMAGE_TAG
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
   build:
     commands:
-      - echo Comienza el Build, started on `date`
-      - mvn install
+      - echo Build started on `date`
+      - echo Generando la imagen Docker...          
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG      
   post_build:
     commands:
-      - echo Post_build finalizado!
-artifacts:
-  files:
-    - target/messageUtil-1.0.jar
+      - echo Finalizado el Build
+      - echo Publicando la imagen Docker...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
