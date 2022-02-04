@@ -7,8 +7,12 @@ version: 0.2
   #  LOGIN_PASSWORD: /CodeBuild/dockerLoginPassword
 env:
   secrets-manager:
-    DOCKERHUB_PASS: "DOCKERHUB_KEYS:DOCKER_PASS"
-    DOCKERHUB_USERNAME: "DOCKERHUB_KEYS:DOCKER_USERNAME"
+    # DOCKERHUB_PASS: "DOCKERHUB_KEYS:DOCKER_PASS"
+    # DOCKERHUB_USERNAME: "DOCKERHUB_KEYS:DOCKER_USERNAME"
+    LOGIN: lab/sonarclouddemo:sonartoken
+    HOST: lab/sonarclouddemo:HOST
+    Organization: lab/sonarclouddemo:Organization
+    Project: lab/sonarclouddemo:Project
 
 batch:
   fast-fail: true
@@ -25,15 +29,21 @@ phases:
       # - tar xzvf apache-maven-3.8.4-bin.tar.gz
       # - mv apache-maven-3.8.4 /opt/maven
       # - export PATH=/opt/apache-maven-3.8.4/bin:$PATH
-      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
-      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+      - apt-get update
+      - apt-get install -y jq
+      - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
+      - unzip ./sonar-scanner-cli-3.3.0.1492-linux.zip
+      - export PATH=$PATH:/sonar-scanner-3.3.0.1492-linux/bin/
+
+      # - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
+      # - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
     finally:
       - echo Finaliza la etapa de instalación
   pre_build:
     commands:
       - echo Fase de Pre-build...
       - echo Logueo al DockerHub
-      - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_PASS    
+      # - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_PASS    
       - echo Obtener las variables maven
       - BRANCH_NAME="$BRANCH"
       - mvn resources:resources
@@ -53,14 +63,20 @@ phases:
     commands:
       - echo Fase de Build...
       - echo El build comienza el `date`
-      - mvn test
-      - mvn spotbugs:spotbugs
-      - mvn verify
-      - mvn package
+      # - mvn test
+      # - mvn spotbugs:spotbugs
+      # - mvn verify
+      # - mvn package
+      - mvn sonar:sonar -Dsonar.login=$LOGIN -Dsonar.host.url=$HOST -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
+      - sleep 5
+      - curl https://sonarcloud.io/api/qualitygates/project_status?projectKey=$Project >result.json
+      - cat result.json
+      - if [ $(jq -r '.projectStatus.status' result.json) = ERROR ] ; then $CODEBUILD_BUILD_SUCCEEDING -eq 0 ;fi
+
       - echo Generando la imagen docker
-      - docker build -t $IMAGE_NAME:$IMAGE_TAG .
-      - echo Creando el tag docker
-      - docker tag $IMAGE_NAME:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+      # - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+      # - echo Creando el tag docker
+      # - docker tag $IMAGE_NAME:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
     finally:
       - echo Finaliza la etapa Build
   post_build:
@@ -68,7 +84,7 @@ phases:
       - echo Fase de Post-build...
       - echo El build finaliza el `date`
       - echo Publicando la imagen docker
-      - docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+      # - docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
     finally:
       - echo Finaliza la etapa Post-build
 
