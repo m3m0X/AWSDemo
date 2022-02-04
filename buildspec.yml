@@ -1,63 +1,106 @@
-# version: 0.2
-
-# phases:
-#   install:
-#     runtime-versions:
-#       java: corretto11
-#   pre_build:
-#     commands:
-#       - echo Esta es la etapa pre_build...
-#   build:
-#     commands:
-#       - echo Comienza el Build, started on `date`
-#       - mvn install
-#   post_build:
-#     commands:
-#       - echo Post_build finalizado!
-# artifacts:
-#   files:
-#     - target/messageUtil-1.0.jar
-
 version: 0.2
 
+#env:
+  #variables:
+    #JAVA_HOME: "/usr/lib/jvm/java-8-openjdk-amd64"
+  #parameter-store:
+  #  LOGIN_PASSWORD: /CodeBuild/dockerLoginPassword
+env:
+  secrets-manager:
+    DOCKERHUB_PASS: "DOCKERHUB_KEYS:DOCKER_PASS"
+    DOCKERHUB_USERNAME: "DOCKERHUB_KEYS:DOCKER_USERNAME"
+
+batch:
+  fast-fail: true
+  # biuld-list:
+  # build-matrix:
+  # build-graph:
+
 phases:
+  install:
+    commands:
+      - echo Fase de instalación...
+      # - yum update -y
+      # - wget https://dlcdn.apache.org/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.tar.gz
+      # - tar xzvf apache-maven-3.8.4-bin.tar.gz
+      # - mv apache-maven-3.8.4 /opt/maven
+      # - export PATH=/opt/apache-maven-3.8.4/bin:$PATH
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+    finally:
+      - echo Finaliza la etapa de instalación
   pre_build:
     commands:
-      - echo Conectandose a Amazon ECR...
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo Fase de Pre-build...
+      - echo Logueo al DockerHub
+      - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_PASS    
+      - echo Obtener las variables maven
+      - BRANCH_NAME="$BRANCH"
+      - mvn resources:resources
+      - VERSION=$(cat ./target/classes/project.properties | grep "version" | cut -d'=' -f2)
+      - IMAGE_NAME=$(cat ./target/classes/project.properties | grep "artifactId" | cut -d'=' -f2)
+      - BUILD_ID=$(date +'%y%m%d%H%M%S')
+      - IMAGE_TAG=$(if [ "$BRANCH_NAME" = "develop" ] ; then echo "$VERSION.$BUILD_ID" ; else echo "$VERSION"; fi)
+    finally:
+      - echo VERSION="$VERSION"
+      - echo IMAGE_NAME="$IMAGE_NAME"
+      - echo BUILD_ID="$BUILD_ID"
+      - echo IMAGE_TAG="$IMAGE_TAG"
+      - echo BRANCH_NAME=${CODEBUILD_WEBHOOK_TRIGGER#branch/}
+      - echo Finaliza la etapa de pre-build
   build:
+    on-failure: ABORT
     commands:
-      - echo Build started on `date`
-      - echo Generando la imagen Docker...          
-      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
-      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG      
+      - echo Fase de Build...
+      - echo El build comienza el `date`
+      - mvn test
+      - mvn spotbugs:spotbugs
+      - mvn verify
+      - mvn package
+      - echo Generando la imagen docker
+      - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+      - echo Creando el tag docker
+      - docker tag $IMAGE_NAME:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+    finally:
+      - echo Finaliza la etapa Build
   post_build:
     commands:
-      - echo Finalizado el Build
-      - echo Publicando la imagen Docker en ECR...
-      #- docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
-      - docker push 011067815571.dkr.ecr.us-east-1.amazonaws.com/m3m0x-dockerhub:latest
+      - echo Fase de Post-build...
+      - echo El build finaliza el `date`
+      - echo Publicando la imagen docker
+      - docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+    finally:
+      - echo Finaliza la etapa Post-build
 
-#Funciona! Para publicar imagen en DockerHub con secrets
 
-# version: 0.2
-# env:
-#   secrets-manager:
-#     DOCKERHUB_PASS: "DOCKERHUB_KEYS:DOCKER_PASS"
-#     DOCKERHUB_USERNAME: "DOCKERHUB_KEYS:DOCKER_USERNAME"
-# phases:
-#   pre_build:
-#     commands:
-#       - echo Logging in to Docker Hub...
-#       - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_PASS    
-#   build:
-#     commands:
-#       - echo Build started on `date`
-#       - echo Building the Docker image...
-#       - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
-#       - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $IMAGE_REPO_NAME:$IMAGE_TAG
-#   post_build:
-#     commands:
-#       - echo Build completed on `date`
-#       - echo Pushing the Docker image...
-#       - docker push $IMAGE_REPO_NAME:$IMAGE_TAG
+reports:
+  jacoco-report:
+    files:
+      - './target/test-results/surefire/*.xml'
+    file-format: 'JUNITXML'
+    #arn:aws:codebuild:your-region:your-aws-account-id:report-group/report-group-name-1:
+    #files:
+    #  - "**/*"
+    #base-directory: 'target/tests/reports'
+    #discard-paths: no
+  #reportGroupCucumberJson:
+    #files:
+    #  - 'cucumber/target/cucumber-tests.xml'
+    #discard-paths: yes
+    #file-format: CUCUMBERJSON # default is JUNITXML
+artifacts:
+  files:
+    - target/*.jar
+  discard-paths: yes
+  #secondary-artifacts:
+  #  artifact1:
+  #    files:
+  #      - target/artifact-1.0.jar
+  #    discard-paths: yes
+  #  artifact2:
+  #    files:
+  #      - target/artifact-2.0.jar
+  #    discard-paths: yes
+cache:
+  paths:
+    - '/root/.m2/**/*'
