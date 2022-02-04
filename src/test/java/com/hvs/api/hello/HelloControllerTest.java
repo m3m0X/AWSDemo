@@ -14,6 +14,6 @@ class HelloControllerTest {
 
     @org.junit.jupiter.api.Test
     void sayHello() {
-        Assertions.assertEquals("Hello there Guillermo!!!", controller.sayHello());
+        Assertions.assertEquals("Hello there Memo!!!", controller.sayHello());
     }
 }
