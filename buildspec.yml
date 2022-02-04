@@ -9,7 +9,7 @@ env:
   secrets-manager:
     # DOCKERHUB_PASS: "DOCKERHUB_KEYS:DOCKER_PASS"
     # DOCKERHUB_USERNAME: "DOCKERHUB_KEYS:DOCKER_USERNAME"
-    LOGIN: lab/sonarclouddemo:sonartoken
+    SONAR_TOKEN: lab/sonarclouddemo:sonartoken
     HOST: lab/sonarclouddemo:HOST
     Organization: lab/sonarclouddemo:Organization
     Project: lab/sonarclouddemo:Project
@@ -29,9 +29,9 @@ phases:
       # - tar xzvf apache-maven-3.8.4-bin.tar.gz
       # - mv apache-maven-3.8.4 /opt/maven
       # - export PATH=/opt/apache-maven-3.8.4/bin:$PATH
-      - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
-      - unzip ./sonar-scanner-cli-3.3.0.1492-linux.zip
-      - export PATH=$PATH:/sonar-scanner-3.3.0.1492-linux/bin/
+      # - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
+      # - unzip ./sonar-scanner-cli-3.3.0.1492-linux.zip
+      # - export PATH=$PATH:/sonar-scanner-3.3.0.1492-linux/bin/
 
       # - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
       # - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
@@ -65,11 +65,11 @@ phases:
       # - mvn spotbugs:spotbugs
       # - mvn verify
       # - mvn package
-      - mvn sonar:sonar -Dsonar.login=$LOGIN -Dsonar.host.url=$HOST -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
-      - sleep 5
-      - curl https://sonarcloud.io/api/qualitygates/project_status?projectKey=$Project >result.json
-      - cat result.json
-      - if [ $(jq -r '.projectStatus.status' result.json) = ERROR ] ; then $CODEBUILD_BUILD_SUCCEEDING -eq 0 ;fi
+      - mvn verify sonar:sonar #-Dsonar.login=$SONAR_TOKEN -Dsonar.host.url=$HOST -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
+      # - sleep 5
+      # - curl https://sonarcloud.io/api/qualitygates/project_status?projectKey=$Project >result.json
+      # - cat result.json
+      # - if [ $(jq -r '.projectStatus.status' result.json) = ERROR ] ; then $CODEBUILD_BUILD_SUCCEEDING -eq 0 ;fi
 
       - echo Generando la imagen docker
       # - docker build -t $IMAGE_NAME:$IMAGE_TAG .
