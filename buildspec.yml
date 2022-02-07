@@ -10,6 +10,7 @@ env:
     # DOCKERHUB_PASS: "DOCKERHUB_KEYS:DOCKER_PASS"
     # DOCKERHUB_USERNAME: "DOCKERHUB_KEYS:DOCKER_USERNAME"
     SONAR_TOKEN: lab/sonarclouddemo:sonartoken
+    CODECOV_TOKEN: lab/sonarclouddemo:codecovtoken
     HOST: lab/sonarclouddemo:HOST
     Organization: lab/sonarclouddemo:Organization
     Project: lab/sonarclouddemo:Project
@@ -35,6 +36,7 @@ phases:
 
       # - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
       # - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+      - bash <(curl -s https://codecov.io/bash)
     finally:
       - echo Finaliza la etapa de instalación
   pre_build:
@@ -66,6 +68,7 @@ phases:
       # - mvn verify
       # - mvn package
       - mvn verify sonar:sonar #-Dsonar.login=$SONAR_TOKEN -Dsonar.host.url=$HOST -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
+      -  bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r target/test-results/jacoco/*.xml
       # - sleep 5
       # - curl https://sonarcloud.io/api/qualitygates/project_status?projectKey=$Project >result.json
       # - cat result.json
