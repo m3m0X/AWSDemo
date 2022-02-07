@@ -120,6 +120,13 @@
                             <outputDirectory>${project.test.result.directory}/jacoco</outputDirectory>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
