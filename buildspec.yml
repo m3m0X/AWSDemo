@@ -36,7 +36,6 @@ phases:
 
       # - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
       # - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
-      - bash <(curl -s https://codecov.io/bash)
     finally:
       - echo Finaliza la etapa de instalación
   pre_build:
@@ -86,6 +85,7 @@ phases:
       - echo El build finaliza el `date`
       - echo Publicando la imagen docker
       # - docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+      - bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
     finally:
       - echo Finaliza la etapa Post-build
 
