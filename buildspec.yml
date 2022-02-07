@@ -66,9 +66,8 @@ phases:
       # - mvn spotbugs:spotbugs
       # - mvn verify
       # - mvn package
-      # - mvn verify sonar:sonar #-Dsonar.login=$SONAR_TOKEN -Dsonar.host.url=$HOST -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
-      - mvn verify -f pom.xml -fn
-      # -  bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r target/test-results/jacoco/*.xml
+      - mvn verify sonar:sonar #-Dsonar.login=$SONAR_TOKEN -Dsonar.host.url=$HOST -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
+      # - mvn verify -f pom.xml -fn
       # - sleep 5
       # - curl https://sonarcloud.io/api/qualitygates/project_status?projectKey=$Project >result.json
       # - cat result.json
