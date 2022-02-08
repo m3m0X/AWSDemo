@@ -82,7 +82,7 @@ phases:
       - echo Finaliza la etapa Build
   post_build:
     commands:
-      - echo Fase de Post-build...
+      - echo Fase Post-build...
       - echo El build finaliza el `date`
       - echo Publicando la imagen docker
       # - docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
