@@ -41,7 +41,7 @@ phases:
       - echo Finaliza la etapa de instalación
   pre_build:
     commands:
-      - echo Fase de Pre-build...
+      - echo Fase de Pre-build....
       - echo Logueo al DockerHub
       # - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_PASS    
       - echo Obtener las variables maven
